@@ -273,6 +273,11 @@ export function wecomInboundMessage(frame, client) {
   const replyTo = replyReferenceForBody(body);
   return {
     content: messageText(frame),
+    // `kind` is what the archive gates on: `captureGroupHistory` returns early unless the message is
+    // a group one, and without it the WeCom path archived nothing at all — silently, because an
+    // early return is indistinguishable from "there was nothing to save".
+    kind: body?.chattype === 'group' ? 'group' : 'direct',
+    senderId: nonEmptyString(body?.from?.userid) ?? '',
     images: imageContents(body).map((image) => imageSource(client, image)).filter(Boolean),
     files: fileContents(frame).map((file) => fileSource(client, file)).filter(Boolean),
     ...(replyTo ? { replyTo } : {}),
@@ -1985,10 +1990,23 @@ export class WecomHarnessBridge {
    * @param {{scope?: string, groupName?: string}} extra
    */
   async #captureHistory(frame, message, extra = {}) {
-    if (!this.#groupHistory) return;
+    // DIAGNOSTIC: the archive is silent when it drops an entry, so every reason to skip is logged.
+    if (!this.#groupHistory) {
+      this.#logger.warn?.('[dsh-im] wecom: no group history store; message not archived');
+      return;
+    }
     const body = bodyOf(frame);
     const entry = groupHistoryEntry('wecom', body, message, extra);
-    if (!entry) return;
+    if (!entry) {
+      this.#logger.warn?.('[dsh-im] wecom: no archive entry built', {
+        chattype: body?.chattype, hasChatid: Boolean(body?.chatid), msgid: body?.msgid,
+      });
+      return;
+    }
+    this.#logger.info?.('[dsh-im] wecom: archiving', {
+      channel: entry.channel, groupId: entry.groupId, messageId: entry.messageId,
+      senderId: entry.senderId,
+    });
     await captureGroupHistory(this.#groupHistory, message, entry, { logger: this.#logger });
   }
 }
