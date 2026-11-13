@@ -30,6 +30,7 @@ export class WecomRuntime {
   #secret;
   #harness;
   #state;
+  #groupHistory;
   #contextEnhancement;
   #accessPolicy;
   #logger;
@@ -53,6 +54,7 @@ export class WecomRuntime {
     secret,
     harness,
     state,
+    groupHistory,
     contextEnhancement,
     accessPolicy,
     logger = console,
@@ -71,6 +73,7 @@ export class WecomRuntime {
     this.#secret = secret;
     this.#harness = harness;
     this.#state = state;
+    this.#groupHistory = groupHistory;
     this.#contextEnhancement = contextEnhancement;
     this.#accessPolicy = accessPolicy;
     this.#logger = logger; this.#diagnostics = createConnectionDiagnostics({ channel: 'wecom', logger });
@@ -132,6 +135,7 @@ export class WecomRuntime {
       client,
       harness: this.#harness,
       state: this.#state,
+      groupHistory: this.#groupHistory,
       contextEnhancement: this.#contextEnhancement,
       accessPolicy: this.#accessPolicy,
       status: this.#status,

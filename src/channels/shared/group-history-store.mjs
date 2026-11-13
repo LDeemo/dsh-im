@@ -5,7 +5,12 @@ import { chmod, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'no
 import { dirname, join, resolve } from 'node:path';
 import { stageInboundFiles } from './inbound-file.mjs';
 
-export const GROUP_HISTORY_CHANNELS = Object.freeze(['whatsapp', 'feishu', 'telegram', 'discord', 'slack', 'qq']);
+// `wecom` is here in this fork: the upstream list omits it, which left a WeCom bot with no archive —
+// its messages reached a session and vanished. WeCom can only receive what was sent to it, so what it
+// records is exactly the addressed traffic, and the capability note says so.
+export const GROUP_HISTORY_CHANNELS = Object.freeze([
+  'whatsapp', 'feishu', 'telegram', 'discord', 'slack', 'qq', 'wecom',
+]);
 export const DEFAULT_GROUP_HISTORY_DAYS = 14;
 const DAY = 86_400_000;
 const MAX_FILE_BYTES = 100 * 1024 * 1024;

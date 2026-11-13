@@ -13,9 +13,12 @@ test('the published client registers the complete Russian pack and renders each 
   // dictionary tests alone cannot detect a stale lib/client.js in the package.
   let client;
   const require = createRequire(import.meta.url);
+  // The id is the package name, and a fork renames it. Reading the manifest keeps this assertion
+  // about "the bundle registers the package it ships as" instead of about one hard-coded string.
+  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   runInNewContext(await readFile(new URL('../lib/client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load({ id, factory }) {
-      assert.equal(id, '@xmanrui/dsh-im');
+      assert.equal(id, manifest.name);
       client = factory(require);
     } } },
     AbortController, setTimeout, clearTimeout, console,

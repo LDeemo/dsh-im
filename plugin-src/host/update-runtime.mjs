@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 import semver from 'semver';
 
-export const PACKAGE_NAME = '@xmanrui/dsh-im';
+// This fork ships under its own name. The update checker must look for the package that is actually
+// installed, or it reports "already up to date" for a package nobody published.
+export const PACKAGE_NAME = '@goodbuddy/dsh-im';
 export const NPM_REGISTRY = 'https://registry.npmjs.org/';
 
 const INSTALL_TIMEOUT_MS = 15 * 60_000;
@@ -254,7 +256,7 @@ export function createUpdateRuntime(options = {}) {
   }
 
   async function checkRegistry(runtime, signal) {
-    const args = ['config', 'get', '@xmanrui:registry', '--json'];
+    const args = ['config', 'get', '@goodbuddy:registry', '--json'];
     const result = await run(
       (childSignal) => runtime.desktop
         ? runtime.desktop.run(args, childSignal)

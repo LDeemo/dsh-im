@@ -5,7 +5,7 @@ import { callManagementRpc } from '../management-rpc.mjs';
 import { h, IM_LOCALE_NAMESPACE, imLocale, localizeTemplate, localizeText } from './i18n.js';
 import { IM_MAIN_PANEL_ID } from './plugin-page.js';
 export const CHANNEL_LIST_RPC_CHANNEL = '/dsh-im-channels';
-export const CHANNEL_SESSIONS_PANEL_ID = 'xmanrui-dsh-im-channels';
+export const CHANNEL_SESSIONS_PANEL_ID = 'goodbuddy-dsh-im-channels';
 
 const CHANNEL_LABELS = Object.freeze({
   matrix: 'Matrix',

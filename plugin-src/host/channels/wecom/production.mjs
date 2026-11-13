@@ -9,6 +9,7 @@ import { WecomQrAuth } from '../../../../src/channels/wecom/qr-auth.mjs';
 import { WecomStateStore } from '../../../../src/channels/wecom/state-store.mjs';
 import { WecomController } from '../../../../src/channels/wecom/wecom-controller.mjs';
 import { WecomRuntime } from '../../../../src/channels/wecom/wecom-runtime.mjs';
+import { getGroupHistoryStore } from '../../group-history-runtime.mjs';
 import {
   BotWorkspaceStore,
   createBotWorkspaceScope,
@@ -147,6 +148,9 @@ export async function createProductionController(ctx, config = {}, internals = {
         secret,
         harness: workspaceScope.harness,
         state: workspaceScope.state,
+        // The same archive QQ writes to. Without it a WeCom message reaches a session and leaves no
+        // record, so nothing downstream can observe the channel at all.
+        groupHistory: internals.groupHistory ?? getGroupHistoryStore(ctx, config),
         contextEnhancement: { botId, getSettings: () => workspaces.contextEnhancementFor(botId) },
         accessPolicy: accessPolicyProvider(workspaces, botId, {
           channel: 'wecom', config: botConfig,

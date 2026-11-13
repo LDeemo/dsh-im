@@ -3,6 +3,7 @@ import { SESSION_NAV_HELP_LINES } from '../shared/command-catalog.mjs';
 import { imageInputLimits } from '../shared/image-input-policy.mjs';
 import { imageDownloadLimitMessage } from '../shared/image-prompt.mjs';
 import { createDeferredDeliveryCoordinator, deferredOutcomeText } from '../shared/deferred-delivery-coordinator.mjs';
+import { captureGroupHistory, groupHistoryEntry } from '../shared/group-history.mjs';
 import { generateReqId } from '@wecom/aibot-node-sdk';
 import { randomUUID } from 'node:crypto';
 import { wecomSendDiagnostic, wecomSendError } from './send-error.mjs';
@@ -590,6 +591,7 @@ export class WecomHarnessBridge {
   #client;
   #harness;
   #state;
+  #groupHistory;
   #deferred;
   #contextEnhancement;
   #accessPolicy;
@@ -620,6 +622,7 @@ export class WecomHarnessBridge {
     client,
     harness,
     state,
+    groupHistory,
     contextEnhancement,
     accessPolicy,
     status = createWecomBridgeStatus(),
@@ -641,6 +644,8 @@ export class WecomHarnessBridge {
     this.#client = client;
     this.#harness = harness;
     this.#state = state;
+    // Optional: a deployment without the archive still answers messages, it just keeps no history.
+    this.#groupHistory = groupHistory;
     this.#contextEnhancement = contextEnhancement;
     this.#accessPolicy = accessPolicy;
     this.#status = status;
@@ -955,6 +960,14 @@ export class WecomHarnessBridge {
       this.#contextEnhancement,
       conversationType,
     ));
+    // Recorded after the access gate: a message this bot refused is not part of the conversation, and
+    // keeping it would make the archive describe a room the bot is not in. Not awaited — this method is
+    // not async and archiving must not delay the reply — so a failure is logged rather than silently
+    // dropped.
+    void this.#captureHistory(frame, commandMessage, {
+      scope: String(this.#status?.scope ?? ''),
+      groupName: '',
+    }).catch((error) => this.#logger.warn?.('[dsh-im] unable to save group message:', error?.message ?? error));
     if (body.chattype === 'single') {
       rememberConnectionTestTarget(this.#state, { chatId });
     }
@@ -1960,5 +1973,22 @@ export class WecomHarnessBridge {
         this.#logger.warn?.('[dsh-im:wecom] failed to cancel a pending Harness interaction');
       }
     }
+  }
+  /**
+   * Saves one inbound message to the shared archive.
+   *
+   * The same store QQ, Feishu and Discord write to, using the same entry shape, so everything
+   * downstream reads one history regardless of which channel produced it.
+   *
+   * @param {object} frame the raw callback body
+   * @param {object} message the inbound message already parsed by this bridge
+   * @param {{scope?: string, groupName?: string}} extra
+   */
+  async #captureHistory(frame, message, extra = {}) {
+    if (!this.#groupHistory) return;
+    const body = bodyOf(frame);
+    const entry = groupHistoryEntry('wecom', body, message, extra);
+    if (!entry) return;
+    await captureGroupHistory(this.#groupHistory, message, entry, { logger: this.#logger });
   }
 }

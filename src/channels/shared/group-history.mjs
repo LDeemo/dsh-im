@@ -35,6 +35,24 @@ export function groupHistoryEntry(channel, raw, message, { scope = '', groupName
     messageId: raw.event.ts, sentAt: Math.floor(Number(raw.event.ts) * 1000), text: raw.event.text ?? '',
     type: raw.event.files?.length ? 'file' : 'text', threadId: raw.event.thread_ts,
     capability: '需订阅 message.channels / message.groups，并已加入目标频道。' };
+  if (channel === 'wecom') {
+    // The body of a WeCom callback: `chatid` for a group, `from.userid` for a direct message. A smart
+    // bot only receives what was sent to it, so this records addressed traffic and nothing else —
+    // there is no room to observe, and the note says so rather than pretending otherwise.
+    const chatType = raw.chattype === 'group' ? 'group' : 'single';
+    const groupId = chatType === 'group' ? String(raw.chatid ?? '') : String(raw.from?.userid ?? '');
+    return {
+      ...common,
+      scope,
+      groupId,
+      messageId: String(raw.msgid ?? ''),
+      sentAt: Number.isFinite(Number(raw.send_time)) ? Number(raw.send_time) * 1000 : Date.now(),
+      text: message.content ?? '',
+      type: message.files?.length ? 'file' : message.images?.length ? 'image' : 'text',
+      throwOnFail: true,
+      capability: '智能机器人只能收到 @ 和私聊，看不到群里其他消息，因此没有主动观察。',
+    };
+  }
   return null;
 }
 
