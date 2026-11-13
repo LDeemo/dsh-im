@@ -31,6 +31,7 @@ export class WecomRuntime {
   #harness;
   #state;
   #groupHistory;
+  #deferDirectToRouter = false;
   #contextEnhancement;
   #accessPolicy;
   #logger;
@@ -55,6 +56,7 @@ export class WecomRuntime {
     harness,
     state,
     groupHistory,
+    deferDirectToRouter,
     contextEnhancement,
     accessPolicy,
     logger = console,
@@ -74,6 +76,7 @@ export class WecomRuntime {
     this.#harness = harness;
     this.#state = state;
     this.#groupHistory = groupHistory;
+    this.#deferDirectToRouter = deferDirectToRouter === true;
     this.#contextEnhancement = contextEnhancement;
     this.#accessPolicy = accessPolicy;
     this.#logger = logger; this.#diagnostics = createConnectionDiagnostics({ channel: 'wecom', logger });
@@ -136,6 +139,7 @@ export class WecomRuntime {
       harness: this.#harness,
       state: this.#state,
       groupHistory: this.#groupHistory,
+      deferDirectToRouter: this.#deferDirectToRouter,
       contextEnhancement: this.#contextEnhancement,
       accessPolicy: this.#accessPolicy,
       status: this.#status,

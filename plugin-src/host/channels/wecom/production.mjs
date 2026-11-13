@@ -151,6 +151,9 @@ export async function createProductionController(ctx, config = {}, internals = {
         // The same archive QQ writes to. Without it a WeCom message reaches a session and leaves no
         // record, so nothing downstream can observe the channel at all.
         groupHistory: internals.groupHistory ?? getGroupHistoryStore(ctx, config),
+        // A deployment that runs its own router sets this: direct replies belong to the router, and
+        // this bridge only archives. A standalone install leaves it off and keeps answering here.
+        deferDirectToRouter: config.deferDirectToRouter === true,
         contextEnhancement: { botId, getSettings: () => workspaces.contextEnhancementFor(botId) },
         accessPolicy: accessPolicyProvider(workspaces, botId, {
           channel: 'wecom', config: botConfig,
