@@ -60,8 +60,22 @@ export function groupHistoryEntry(channel, raw, message, { scope = '', groupName
 }
 
 /** Record received groups before the response gate, without requiring a mention or an AI session. */
+/**
+ * Channels whose archive includes direct conversations.
+ *
+ * Only WeCom: a smart bot receives mentions and private messages and nothing else, so a group-only
+ * archive would leave it with no history. QQ and the others can see their rooms, and their private
+ * traffic is not what this store is for.
+ */
+export const ARCHIVED_KINDS = new Set(['wecom']);
+
 export async function captureGroupHistory(store, message, entry, { logger = console } = {}) {
-  if (!store || !entry || message?.kind !== 'group') return message;
+  // A channel may archive direct conversations too. The store keeps one row per conversation and does
+  // not distinguish a group from a one-to-one chat, so this gate decides the scope: upstream keeps it
+  // to groups, while a channel whose only traffic is addressed (a WeCom smart bot) needs private
+  // messages recorded or it has no observable history at all.
+  const kinds = ARCHIVED_KINDS.has(entry?.channel) ? ['group', 'direct'] : ['group'];
+  if (!store || !entry || !kinds.includes(message?.kind)) return message;
   try {
     const context = await store.capture({ ...entry,
       senderId: entry.senderId ?? message.senderId,
