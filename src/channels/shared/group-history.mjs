@@ -45,6 +45,9 @@ export function groupHistoryEntry(channel, raw, message, { scope = '', groupName
       ...common,
       scope,
       groupId,
+      // The sender comes from the callback body, not from the parsed message: `message.senderId` is
+      // not set on this path, and a missing senderId makes the store drop the entry silently.
+      senderId: String(raw.from?.userid ?? common.senderId ?? ''),
       messageId: String(raw.msgid ?? ''),
       sentAt: Number.isFinite(Number(raw.send_time)) ? Number(raw.send_time) * 1000 : Date.now(),
       text: message.content ?? '',
