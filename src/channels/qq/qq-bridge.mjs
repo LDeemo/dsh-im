@@ -481,6 +481,7 @@ export class QqHarnessBridge {
   #deferred;
   #contextEnhancement;
   #groupHistory;
+  #deferToRouterFlag = false;
   #accessPolicy;
   #status;
   #logger;
@@ -510,6 +511,7 @@ export class QqHarnessBridge {
     state,
     contextEnhancement,
     groupHistory,
+    deferToRouter,
     accessPolicy,
     status = createQqBridgeStatus(),
     logger = console,
@@ -531,6 +533,8 @@ export class QqHarnessBridge {
     this.#state = state;
     this.#contextEnhancement = contextEnhancement;
     this.#groupHistory = groupHistory;
+    // A deployment with a router sets this: addressed messages are archived and left to it.
+    this.#deferToRouterFlag = deferToRouter === true;
     this.#accessPolicy = accessPolicy;
     this.#status = status;
     this.#logger = logger;
@@ -564,7 +568,37 @@ export class QqHarnessBridge {
       type: message.attachments?.length ? 'file' : 'text',
       capability: '仅保存实际投递的消息；未 @ 能力及跨应用群身份尚需验证，当前按应用来源隔离。',
     }, { logger: this.#logger })
-      .then(() => { message.groupHistory = normalized.groupHistory; return this.#accept(message); });
+      .then(() => {
+        message.groupHistory = normalized.groupHistory;
+        // Archived first, then handed to whoever owns routing. Answering here as well means two
+        // agents reply to one question — the DSH IM session opens its own conversation, and the
+        // router opens a ticket for the same message. The person sees both.
+        //
+        // Off unless the deployment asks for it: a standalone dsh-im has no router, so it must
+        // answer for itself.
+        if (this.#deferToRouter()) return this.#deferMessage(message);
+        return this.#accept(message);
+      });
+  }
+
+  /**
+   * Whether this bridge hands addressed messages to an external router instead of answering them.
+   *
+   * Only messages that were addressed to the bot. `addressed` is what makes this a question for the
+   * agent rather than part of the room's conversation, and a router does not need the room.
+   */
+  #deferToRouter() {
+    return this.#deferToRouterFlag === true;
+  }
+
+  /** Records the hand-off and stops. The archive already has the message; the router will find it. */
+  #deferMessage(message) {
+    this.#state.markSeen(message.messageId);
+    this.#status.messagesReceived += 1;
+    this.#status.lastMessageAt = new Date().toISOString();
+    this.#status.messagesRejected += 1;
+    this.#status.lastRejectedAt = new Date().toISOString();
+    return Promise.resolve();
   }
 
   #accept(message) {

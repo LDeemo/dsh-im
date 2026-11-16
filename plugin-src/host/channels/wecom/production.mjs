@@ -153,7 +153,9 @@ export async function createProductionController(ctx, config = {}, internals = {
         groupHistory: internals.groupHistory ?? getGroupHistoryStore(ctx, config),
         // A deployment that runs its own router sets this: direct replies belong to the router, and
         // this bridge only archives. A standalone install leaves it off and keeps answering here.
-        deferDirectToRouter: config.deferDirectToRouter === true,
+        // One option name across every channel. The old `deferDirectToRouter` is still read so an
+        // existing profile keeps working; the two mean the same thing.
+        deferToRouter: config.deferToRouter === true || config.deferDirectToRouter === true,
         contextEnhancement: { botId, getSettings: () => workspaces.contextEnhancementFor(botId) },
         accessPolicy: accessPolicyProvider(workspaces, botId, {
           channel: 'wecom', config: botConfig,

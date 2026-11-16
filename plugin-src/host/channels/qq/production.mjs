@@ -148,6 +148,9 @@ export async function createProductionController(ctx, config = {}, internals = {
         harness: workspaceScope.harness,
         state: workspaceScope.state,
         groupHistory: internals.groupHistory ?? getGroupHistoryStore(ctx, config),
+        // A deployment that runs its own router sets this: addressed messages are archived and left
+        // to the router, so one question does not get answered twice.
+        deferToRouter: config.deferToRouter === true,
         contextEnhancement: { botId, getSettings: () => workspaces.contextEnhancementFor(botId) },
         accessPolicy: accessPolicyProvider(workspaces, botId, {
           channel: 'qq', config: botConfig,

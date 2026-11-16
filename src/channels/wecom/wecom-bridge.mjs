@@ -629,7 +629,7 @@ export class WecomHarnessBridge {
     harness,
     state,
     groupHistory,
-    deferDirectToRouter,
+    deferToRouter,
     contextEnhancement,
     accessPolicy,
     status = createWecomBridgeStatus(),
@@ -654,7 +654,7 @@ export class WecomHarnessBridge {
     // Optional: a deployment without the archive still answers messages, it just keeps no history.
     this.#groupHistory = groupHistory;
     // Optional: when a router owns direct replies, this bridge records and stops.
-    this.#deferDirect = deferDirectToRouter === true;
+    this.#deferDirect = deferToRouter === true;
     this.#contextEnhancement = contextEnhancement;
     this.#accessPolicy = accessPolicy;
     this.#status = status;
@@ -984,7 +984,7 @@ export class WecomHarnessBridge {
     // well would mean two agents reply to the same question — one of them without seeing the other's
     // plan. The archive is written above, so the router can pick the message up; this bridge stops
     // before opening a session of its own.
-    if (body.chattype === 'single' && this.#deferDirectToRouter()) {
+    if (body.chattype === 'single' && this.#deferToRouter()) {
       return this.#finishAccessDecision(frame, messageId, chatId, { allowed: false, reason: 'deferred-to-router' });
     }
     const batchCommand = isBatchInputCommand(commandText);
@@ -2007,7 +2007,7 @@ export class WecomHarnessBridge {
    * owns the reply. Letting the bridge answer too produces two answers to one question. Off unless the
    * deployment asks for it: a standalone install has no router and needs this bridge to reply.
    */
-  #deferDirectToRouter() {
+  #deferToRouter() {
     return this.#deferDirect === true;
   }
 

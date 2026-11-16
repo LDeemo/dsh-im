@@ -37,6 +37,7 @@ export class QqRuntime {
   #state;
   #contextEnhancement;
   #groupHistory;
+  #deferToRouter = false;
   #accessPolicy;
   #logger;
   #diagnostics;
@@ -58,6 +59,7 @@ export class QqRuntime {
     state,
     contextEnhancement,
     groupHistory,
+    deferToRouter,
     accessPolicy,
     logger = console,
     replyTimeoutMs = 600_000,
@@ -74,6 +76,7 @@ export class QqRuntime {
     this.#state = state;
     this.#contextEnhancement = contextEnhancement;
     this.#groupHistory = groupHistory;
+    this.#deferToRouter = deferToRouter === true;
     this.#accessPolicy = accessPolicy;
     this.#logger = logger; this.#diagnostics = createConnectionDiagnostics({ channel: 'qq', logger });
     this.#replyTimeoutMs = replyTimeoutMs;
@@ -195,6 +198,7 @@ export class QqRuntime {
       state: this.#state,
       contextEnhancement: this.#contextEnhancement,
       groupHistory: this.#groupHistory,
+      deferToRouter: this.#deferToRouter,
       accessPolicy: this.#accessPolicy,
       status: this.#status,
       logger: this.#logger,
