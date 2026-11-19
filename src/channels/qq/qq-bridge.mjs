@@ -558,14 +558,18 @@ export class QqHarnessBridge {
   }
 
   accept(message) {
-    // Deliberately not deferred for direct messages: only group traffic reaches `captureGroupHistory`,
-    // and the archive is what the router reads. Deferring a DM here would drop it — archived nowhere,
-    // answered nowhere. Making QQ DMs router-owned needs the direct path to archive first.
-    if (!this.#groupHistory || message?.kind !== 'group') return this.#accept(message);
-    const normalized = { ...qqInboundMessage(message, { fetchImpl: this.#fetchImpl }), kind: 'group',
+    if (!this.#groupHistory) return this.#accept(message);
+    // A direct message is archived like a group one. The archive is the only thing the router reads,
+    // so a message that never reaches it is a message nobody answers — which is why this used to
+    // answer DMs itself. Once they are archived, they can be deferred like everything else.
+    const kind = message?.kind === 'group' ? 'group' : 'direct';
+    const normalized = { ...qqInboundMessage(message, { fetchImpl: this.#fetchImpl }), kind,
       senderId: message.senderId, senderIsBot: message.senderIsBot, addressed: isQqMessageAddressed(message) };
     return captureGroupHistory(this.#groupHistory, normalized, {
-      channel: 'qq', scope: `app:${this.#bot.appId}`, groupId: message.groupOpenid,
+      channel: 'qq', scope: `app:${this.#bot.appId}`,
+      // A direct chat has no group id; the sender's own id is its conversation key. Using
+      // `groupOpenid` for both left every DM filed under one empty conversation.
+      groupId: message.groupOpenid ?? message.senderId,
       messageId: message.messageId, sentAt: message.timestamp, senderName: message.senderName,
       text: message.raw?.content ?? message.content ?? '',
       type: message.attachments?.length ? 'file' : 'text',
@@ -575,7 +579,7 @@ export class QqHarnessBridge {
         message.groupHistory = normalized.groupHistory;
         // Archived first, then handed to whoever owns routing. Answering here as well means two
         // agents reply to one question — the DSH IM session opens its own conversation, and the
-        // router opens a ticket for the same message. The person sees both.
+        // router opens its own work for the same message. The person sees both.
         //
         // Off unless the deployment asks for it: a standalone dsh-im has no router, so it must
         // answer for itself.

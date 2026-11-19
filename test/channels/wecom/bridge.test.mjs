@@ -2724,3 +2724,31 @@ test('Enterprise WeChat clears a submitted batch when the Harness turn is stoppe
   await bridge.accept(frame({ msgid: 'stopped-cancel', text: { content: '/cancel' } }));
   assert.match(transport.streamed.at(-1).content, /没有正在进行的批量输入/);
 });
+
+test('a group message defers to the router as well, and the bridge stays quiet', async () => {
+  // The defer check used to be `chattype === 'single' && deferToRouter()`, so a group message was
+  // archived and then answered here — while the router, reading the same archive, opened its own work
+  // for it. One question, two agents. Whether the message came from a group or a direct chat is the
+  // router's business: this bridge archives and stops either way.
+  const transport = testClient();
+  const bridgeState = state();
+  const captured = [];
+  const bridge = new WecomHarnessBridge({
+    client: transport.client,
+    harness: { ensureRunning: async () => true },
+    state: bridgeState,
+    deferToRouter: true,
+    groupHistory: { capture: async (entry) => { captured.push(entry) } },
+  });
+
+  await bridge.accept(frame({
+    msgid: 'defer-group',
+    chattype: 'group',
+    chatid: 'group-1',
+    text: { content: '@机器人 帮我看下这个问题' },
+  }));
+
+  assert.equal(captured.length, 1, 'the group message reached the archive')
+  assert.equal(captured[0].groupId, 'group-1', 'filed under the group it came from')
+  assert.equal(transport.streamed.length, 0, 'and nothing was streamed back')
+})

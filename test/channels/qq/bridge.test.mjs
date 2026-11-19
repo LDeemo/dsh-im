@@ -2832,3 +2832,35 @@ test('QQ group batch commands are rejected without reaching Harness', async () =
   assert.equal(asks, 0);
   assert.match(sent.at(-1), /仅支持私聊/);
 });
+
+test('a direct message is archived and deferred, not answered here', async () => {
+  // Both kinds hand off to the router when the deployment asks for it. A DM used to fall through to
+  // `#accept`: the bridge opened its own session and answered, while the router — reading the same
+  // archive — opened its own work for the message. The person saw two agents on one question.
+  //
+  // Deferring without archiving would be worse: the router reads the archive and nothing else, so an
+  // unarchived DM would be answered by nobody. That is why `qq` is in `ARCHIVED_KINDS`.
+  const fixture = stateFixture();
+  const sent = [];
+  const captured = [];
+  const bridge = new QqHarnessBridge({
+    bot: { sendText: async (_target, text) => sent.push(text) },
+    ownerUserOpenid: '*',
+    harness: { ensureRunning: async () => true },
+    state: fixture.state,
+    deferToRouter: true,
+    groupHistory: { capture: async (entry) => { captured.push(entry) } },
+  });
+
+  await bridge.accept(message({
+    kind: 'direct',
+    groupOpenid: 'dm-123',
+    content: '帮我看一下这个 bug',
+    messageId: 'dm-1',
+  }));
+
+  assert.equal(captured.length, 1, 'the DM reached the archive')
+  assert.equal(captured[0].groupId, 'dm-123', 'filed under the conversation it came from')
+  assert.equal(sent.length, 0, 'and the bridge said nothing')
+  assert.equal(fixture.sessions.size, 0, 'no session of its own was opened')
+})

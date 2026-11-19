@@ -63,11 +63,13 @@ export function groupHistoryEntry(channel, raw, message, { scope = '', groupName
 /**
  * Channels whose archive includes direct conversations.
  *
- * Only WeCom: a smart bot receives mentions and private messages and nothing else, so a group-only
- * archive would leave it with no history. QQ and the others can see their rooms, and their private
- * traffic is not what this store is for.
+ * A deployment that hands routing to an external router needs every addressed message in the archive,
+ * direct ones included: the router reads the archive and nothing else, so a message that is not
+ * recorded there is a message nobody answers. WeCom needs it because a smart bot receives mentions
+ * and private messages and nothing else. QQ needs it for the same reason when `deferToRouter` is on —
+ * deferring a direct message that was never archived drops it.
  */
-export const ARCHIVED_KINDS = new Set(['wecom']);
+export const ARCHIVED_KINDS = new Set(['wecom', 'qq']);
 
 export async function captureGroupHistory(store, message, entry, { logger = console } = {}) {
   // A channel may archive direct conversations too. The store keeps one row per conversation and does
