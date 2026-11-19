@@ -570,6 +570,9 @@ export class QqHarnessBridge {
       // A direct chat has no group id; the sender's own id is its conversation key. Using
       // `groupOpenid` for both left every DM filed under one empty conversation.
       groupId: message.groupOpenid ?? message.senderId,
+      // Recorded because a delivery target has to declare it: QQ routes a group by `groupOpenId`
+      // and a person by `userOpenId`, and the id alone cannot say which one this is.
+      kind: kind === 'group' ? 'group' : 'user',
       messageId: message.messageId, sentAt: message.timestamp, senderName: message.senderName,
       text: message.raw?.content ?? message.content ?? '',
       type: message.attachments?.length ? 'file' : 'text',

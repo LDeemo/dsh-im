@@ -94,6 +94,7 @@ export class GroupHistoryStore {
         id TEXT PRIMARY KEY, channel TEXT NOT NULL, platform_scope TEXT NOT NULL DEFAULT '',
         platform_group_id TEXT NOT NULL, name TEXT NOT NULL DEFAULT '',
         recording_started_at INTEGER, last_received_at INTEGER, capability TEXT NOT NULL DEFAULT '',
+        kind TEXT NOT NULL DEFAULT 'group',
         UNIQUE(channel, platform_scope, platform_group_id));
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY, group_id TEXT NOT NULL REFERENCES groups(id), platform_message_id TEXT NOT NULL,
@@ -107,6 +108,12 @@ export class GroupHistoryStore {
         source_attachment_key TEXT NOT NULL, name TEXT NOT NULL, mime_type TEXT NOT NULL,
         size_bytes INTEGER, relative_path TEXT, status TEXT NOT NULL, last_error TEXT NOT NULL DEFAULT '',
         UNIQUE(message_id, source_attachment_key));`);
+    // A database created before `kind` existed keeps its old shape: `CREATE TABLE IF NOT EXISTS` does
+    // nothing to an existing table, so the column has to be added here.
+    const columns = this.#db.prepare('PRAGMA table_info(groups)').all().map((column) => column.name);
+    if (!columns.includes('kind')) {
+      this.#db.exec("ALTER TABLE groups ADD COLUMN kind TEXT NOT NULL DEFAULT 'group'");
+    }
     this.#db.prepare("UPDATE attachments SET status = 'unavailable', last_error = ? WHERE status = 'pending'")
       .run('下载被重启中断，原文件尚未保存。');
     // Only our fixed-depth partial files are removed; ready files remain untouched.
@@ -170,12 +177,18 @@ export class GroupHistoryStore {
       .get(entry.channel, scope, platformGroupId);
     if (!group) {
       const id = randomUUID();
-      this.#db.prepare('INSERT INTO groups(id, channel, platform_scope, platform_group_id, name, capability) VALUES(?,?,?,?,?,?)')
-        .run(id, entry.channel, scope, platformGroupId, text(entry.groupName), text(entry.capability, 1000));
+      this.#db.prepare('INSERT INTO groups(id, channel, platform_scope, platform_group_id, name, capability, kind) VALUES(?,?,?,?,?,?,?)')
+        .run(id, entry.channel, scope, platformGroupId, text(entry.groupName), text(entry.capability, 1000),
+          entry.kind === 'user' ? 'user' : 'group');
       group = this.#db.prepare('SELECT * FROM groups WHERE id = ?').get(id);
-    } else if (entry.groupName || entry.capability) {
-      this.#db.prepare('UPDATE groups SET name = ?, capability = ? WHERE id = ?')
-        .run(text(entry.groupName) || group.name, text(entry.capability, 1000) || group.capability, group.id);
+    } else if (entry.groupName || entry.capability || entry.kind) {
+      this.#db.prepare('UPDATE groups SET name = ?, capability = ?, kind = ? WHERE id = ?')
+        .run(
+          text(entry.groupName) || group.name,
+          text(entry.capability, 1000) || group.capability,
+          entry.kind === 'user' ? 'user' : group.kind,
+          group.id,
+        );
     }
     const context = Object.freeze({ store: this, groupId: group.id });
     // Older databases may retain an enabled column. It no longer gates
