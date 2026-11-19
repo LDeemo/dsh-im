@@ -980,11 +980,16 @@ export class WecomHarnessBridge {
     if (body.chattype === 'single') {
       rememberConnectionTestTarget(this.#state, { chatId });
     }
-    // A one-to-one message is handed to whoever owns routing once it is archived. Answering it here as
+    // An addressed message is handed to whoever owns routing once it is archived. Answering it here as
     // well would mean two agents reply to the same question — one of them without seeing the other's
     // plan. The archive is written above, so the router can pick the message up; this bridge stops
     // before opening a session of its own.
-    if (body.chattype === 'single' && this.#deferToRouter()) {
+    //
+    // Both kinds are deferred. This used to check `chattype === 'single'`, so a group message was
+    // archived *and* answered here: the person saw dsh-im's session reply, and the router opened its
+    // own work for the same message. Whether the message came from a group or a direct chat is the
+    // router's business, not this bridge's — it archives and stops either way.
+    if (this.#deferToRouter()) {
       return this.#finishAccessDecision(frame, messageId, chatId, { allowed: false, reason: 'deferred-to-router' });
     }
     const batchCommand = isBatchInputCommand(commandText);

@@ -558,6 +558,9 @@ export class QqHarnessBridge {
   }
 
   accept(message) {
+    // Deliberately not deferred for direct messages: only group traffic reaches `captureGroupHistory`,
+    // and the archive is what the router reads. Deferring a DM here would drop it — archived nowhere,
+    // answered nowhere. Making QQ DMs router-owned needs the direct path to archive first.
     if (!this.#groupHistory || message?.kind !== 'group') return this.#accept(message);
     const normalized = { ...qqInboundMessage(message, { fetchImpl: this.#fetchImpl }), kind: 'group',
       senderId: message.senderId, senderIsBot: message.senderIsBot, addressed: isQqMessageAddressed(message) };
